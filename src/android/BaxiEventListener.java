@@ -18,11 +18,11 @@ import eu.nets.baxi.client.TransactionEventArgs;
 import eu.nets.baxi.ef.BaxiEFEventListener;
 import eu.nets.baxi.ef.CardEventArgs;
 import eu.nets.baxi.ef.CardInfoAllArgs;
-// import eu.nets.baxi.testgui.ActivityViewMessages;
 
 import org.apache.cordova.CallbackContext;
-
-import android.widget.Toast;
+import org.apache.cordova.PluginResult;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 enum CurrentListener {
 	DISPLAY,
@@ -42,10 +42,6 @@ enum CurrentListener {
 	CARD;
 }
 
-
-
-
-
 //Normally BaxiCtrlEventListener will be used unless the BaxiEF is used in the ECR for additional functionality
 public class BaxiEventListener implements BaxiEFEventListener {
     protected final String newLine = System.getProperty("line.separator");
@@ -53,15 +49,9 @@ public class BaxiEventListener implements BaxiEFEventListener {
 		public CallbackContext purchaseCallback;
 
     protected void handleMessage(String messageName, String message, CurrentListener listener){
-    	// Message encapsulatedMessage = new Message();
-    	// Bundle b = new Bundle();
-    	// b.putString("messageName", messageName);
-    	// b.putString("message", message);
-    	// b.putSerializable("listener", listener);
-    	// encapsulatedMessage.setData(b);
-
       android.util.Log.i("debug", "=====================handleMessage "+ messageName+ "============================>");
       android.util.Log.i("debug", message);
+      android.util.Log.i("debug", "================== end handleMessage "+ messageName+ "============================>");
     }
 
 	@Override
@@ -90,16 +80,18 @@ public class BaxiEventListener implements BaxiEFEventListener {
 				this.purchaseCallback.error("Rejected, code: " + args.getResult());
 		} else if (args.getResult() == 0) {
 			if (args.getResponseCode() == "Y") {
-				this.purchaseCallback.success("Processed + " + args.getResponseCode());
+
+				try {
+					JSONObject json = new JSONObject();
+          json.put("cardInfo", args.getTruncatedPan());
+	        this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+				} catch (JSONException e) {
+					//some exception handler code.
+				}
 			} else {
 				this.purchaseCallback.error("Processing failed + " + args.getResponseCode());
 			}
-
 		}
-			// this.purchaseCallback.success("Processes");
-		// } else {
-		// 	this.purchaseCallback.error("Rejected, code: " + args.getResult());
-		// }
     handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
 	}
 
