@@ -51,7 +51,8 @@ public class Baxi extends CordovaPlugin {
         }
 
         if (action.equals("openBaxi")) {
-            this.openBaxi(callbackContext);
+          JSONObject params = args.getJSONObject(0);
+            this.openBaxi(params, callbackContext);
             return true;
         }
 
@@ -145,9 +146,24 @@ public class Baxi extends CordovaPlugin {
 
     }
 
-    private void openBaxi(CallbackContext callbackContext) {
+    private void openBaxi(JSONObject params, CallbackContext callbackContext) {
       this.initBaxi();
+      this.configBaxi(params);
       this.openBaxiConnection(null, callbackContext);
+    }
+    private void configBaxi(JSONObject params) {
+      try {
+        Baxi.BAXI.setHostIpAddress(params.getString("HostIpAddress"));
+      } catch (JSONException e) {
+        android.util.Log.i("info", "error while set HostIpAddress");
+      }
+
+      try {
+        Baxi.BAXI.setHostPort(params.getInt("HostPort"));
+      } catch (JSONException e) {
+        android.util.Log.i("info", "error while set HostPort");
+      }
+
     }
 
     protected void initBaxi() {
