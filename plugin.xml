@@ -11,12 +11,22 @@
         <param name="android-package" value="baxi.Baxi" />
       </feature>
     </config-file>
-    <config-file parent="/*" target="AndroidManifest.xml">
+    <config-file parent="/manifest/application" target="AndroidManifest.xml">
+      <service android:name="com.ingenico.pclservice.PclService" />
+      <service android:name="com.ingenico.pclservice.BluetoothService" />
     </config-file>
+
+
+    <config-file target="AndroidManifest.xml" parent="/*">
+      <uses-permission android:name="android.permission.INTERNET" />
+      <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+      <uses-permission android:name="android.permission.BLUETOOTH" />
+      <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    </config-file>
+
     <source-file src="src/android/jbaxi-android-ef_1.0.2.0.jar" target-dir="libs/" />
     <source-file src="src/android/Baxi.java" target-dir="src/cordova-baxi-plugin/Baxi" />
     <source-file src="src/android/BaxiEventListener.java" target-dir="src/cordova-baxi-plugin/Baxi" />
-    <source-file src="src/android/baxi.ini" target-dir="assets/" />
 
     <source-file src="src/android/ingenico/armeabi/libpclapi.so" target-dir="libs/armeabi" />
     <source-file src="src/android/ingenico/armeabi/libpclnetwork.so" target-dir="libs/armeabi" />
