@@ -61,24 +61,24 @@ public class BaxiEventListener implements BaxiEFEventListener {
 
     @Override
     public void OnStdRspReceived(StdRspReceivedEventArgs args) {
-		handleMessage("StdRspReceived", "", CurrentListener.STD_RSP);
-	}
+        handleMessage("StdRspReceived", "", CurrentListener.STD_RSP);
+    }
 
-	@Override
-	public void OnPrintText(PrintTextEventArgs args) {
-		String printText = args.getPrintText();
-		this.printTextMessages.add(printText);
-		handleMessage("PrintText", printText, CurrentListener.PRINT);
-	}
+    @Override
+    public void OnPrintText(PrintTextEventArgs args) {
+        String printText = args.getPrintText();
+        this.printTextMessages.add(printText);
+        handleMessage("PrintText", printText, CurrentListener.PRINT);
+    }
 
-	@Override
-	public void OnDisplayText(DisplayTextEventArgs args) {
-		String displayText = args.getDisplayText();
+    @Override
+    public void OnDisplayText(DisplayTextEventArgs args) {
+        String displayText = args.getDisplayText();
         this.displayTextMessages.add(displayText);
-		handleMessage("DisplayText", displayText, CurrentListener.DISPLAY);
-	}
+        handleMessage("DisplayText", displayText, CurrentListener.DISPLAY);
+    }
 
-	public JSONObject packJSON(){
+    public JSONObject packJSON(){
         JSONObject json = new JSONObject();
 
         try {
@@ -108,46 +108,46 @@ public class BaxiEventListener implements BaxiEFEventListener {
         return json;
     }
 
-	@Override
-	public void OnLocalMode(LocalModeEventArgs args) {
-		if (args.getResult() == 1) {
-				this.openCallback.success("Opened");
-		} else if (args.getResult() == 2) {
+    @Override
+    public void OnLocalMode(LocalModeEventArgs args) {
+        if (args.getResult() == 1) {
+            this.openCallback.success("Opened");
+        } else if (args.getResult() == 2) {
+            try {
+                JSONObject json = this.packJSON();
+                json.put("result", args.getResult());
+                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+            } catch (JSONException e) {
+                //some exception handler code.
+            }
+        } else if (args.getResult() == 0) {
+            if (args.getResponseCode() == "Y") {
                 try {
                     JSONObject json = this.packJSON();
-                    json.put("result", args.getResult());
-                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                    json.put("cardInfo", args.getTruncatedPan());
+                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
                 } catch (JSONException e) {
                     //some exception handler code.
                 }
-        } else if (args.getResult() == 0) {
-			if (args.getResponseCode() == "Y") {
-				try {
-					JSONObject json = this.packJSON();
-                    json.put("cardInfo", args.getTruncatedPan());
-        	        this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
-				} catch (JSONException e) {
-					//some exception handler code.
-				}
-			} else {
+            } else {
                 this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, this.packJSON()));
-			}
-		}
+            }
+        }
         handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
-	}
+    }
 
-	@Override
-	public void OnTerminalReady(TerminalReadyEventArgs args) {
-		handleMessage("TerminalReady", "", CurrentListener.TERMINAL_READY);
-	}
+    @Override
+    public void OnTerminalReady(TerminalReadyEventArgs args) {
+        handleMessage("TerminalReady", "", CurrentListener.TERMINAL_READY);
+    }
 
-	@Override
-	public void OnJsonReceived(JsonReceivedEventArgs args) {
-		handleMessage("JSONReceived", args.getJsonData(), CurrentListener.JSON_RECEIVED);
-	}
+    @Override
+    public void OnJsonReceived(JsonReceivedEventArgs args) {
+        handleMessage("JSONReceived", args.getJsonData(), CurrentListener.JSON_RECEIVED);
+    }
 
-	@Override
-	public void OnTLDReceived(TLDReceivedEventArgs args) {
+    @Override
+    public void OnTLDReceived(TLDReceivedEventArgs args) {
         String tldDataString;
         try {
             tldDataString = new String(args.TldData, "UTF-8");
@@ -156,14 +156,14 @@ public class BaxiEventListener implements BaxiEFEventListener {
         }
 
         handleMessage("TldReceived", tldDataString, CurrentListener.TLD_RECEIVED);
-	}
+    }
 
-	@Override
-	public void OnLastFinancialResult(LastFinancialResultEventArgs args) {
+    @Override
+    public void OnLastFinancialResult(LastFinancialResultEventArgs args) {
         handleMessage("LastFinancialResult", getLMText(args), CurrentListener.LAST_FIN_RES);
-	}
+    }
 
-	private String getLMText(TransactionEventArgs args){
+    private String getLMText(TransactionEventArgs args){
         String lmText = "";
 
         lmText += "  ResultData: " + args.getResultData() + newLine;
@@ -199,65 +199,65 @@ public class BaxiEventListener implements BaxiEFEventListener {
         lmText += "   OptionalData : " + args.getOptionalData() + newLine;
 
         if (args.getOptionalData() != null && !args.getOptionalData().isEmpty()){
-        	handleMessage("OptionalData", args.getOptionalData(), CurrentListener.OPTIONAL_DATA);
+            handleMessage("OptionalData", args.getOptionalData(), CurrentListener.OPTIONAL_DATA);
         }
 
         return lmText;
-	}
+    }
 
-	@Override
-	public void OnBaxiError(BaxiErrorEventArgs args) {
-		handleMessage("Error", args.getErrorCode() + " " + args.getErrorString(), CurrentListener.ERROR);
-	}
+    @Override
+    public void OnBaxiError(BaxiErrorEventArgs args) {
+        handleMessage("Error", args.getErrorCode() + " " + args.getErrorString(), CurrentListener.ERROR);
+    }
 
-	@Override
-	public void OnConnected() {
-		handleMessage("Baxi Connected", "", CurrentListener.CONNECTED);
-	}
+    @Override
+    public void OnConnected() {
+        handleMessage("Baxi Connected", "", CurrentListener.CONNECTED);
+    }
 
-	@Override
-	public void OnDisconnected() {
-		handleMessage("Baxi Disconnected", "", CurrentListener.DISCONNECTED);
-	}
+    @Override
+    public void OnDisconnected() {
+        handleMessage("Baxi Disconnected", "", CurrentListener.DISCONNECTED);
+    }
 
-	@Override
-	public void OnBarcodeReader(BarcodeReaderEventArgs args) {
-		handleMessage("BarcodeReader", args.getBarcodeText(), CurrentListener.BARCODE_READER);
+    @Override
+    public void OnBarcodeReader(BarcodeReaderEventArgs args) {
+        handleMessage("BarcodeReader", args.getBarcodeText(), CurrentListener.BARCODE_READER);
 
-	}
+    }
 
-	@Override
-	public void OnCardInfoAll(CardInfoAllArgs args) {
-		String str = "";
+    @Override
+    public void OnCardInfoAll(CardInfoAllArgs args) {
+        String str = "";
 
-		str += "  VAS: " + args.getVAS() + newLine;
-		str += "  Customer id: " + args.getCustomerId() + newLine;
-		str += "  Psp Command: " + args.getPspCommand() + newLine;
-		str += "  Status Code: " + args.getStatusCode() + newLine;
-		str += "  Information Field 1: " + args.getInformationField1() + newLine;
-		str += "  Information Field 2: " + args.getInformationField2() + newLine;
-		str += "  Psp Vas ID: " + args.getPspVasId() + newLine;
-		str += "  Card Validation: " + args.getCardValidation() + newLine;
-		str += "  ICC: " + args.getICCGroupId() + newLine;
-		str += "  PAN: " + args.getPAN() + newLine;
-		str += "  Issuer ID: " + args.getIssuerId() + newLine;
-		str += "  Country Code: " + args.getCountryCode() + newLine;
-		str += "  Card Restrictions: " + args.getCardRestrictions() + newLine;
-		str += "  Card Fee: " + args.getCardFee() + newLine;
-		str += "  Track2: " + args.getTrack2() + newLine;
-		str += "  TCC: " + args.getTCC() + newLine;
-		str += "  Bank Agent: " + args.getBankAgent() + newLine;
+        str += "  VAS: " + args.getVAS() + newLine;
+        str += "  Customer id: " + args.getCustomerId() + newLine;
+        str += "  Psp Command: " + args.getPspCommand() + newLine;
+        str += "  Status Code: " + args.getStatusCode() + newLine;
+        str += "  Information Field 1: " + args.getInformationField1() + newLine;
+        str += "  Information Field 2: " + args.getInformationField2() + newLine;
+        str += "  Psp Vas ID: " + args.getPspVasId() + newLine;
+        str += "  Card Validation: " + args.getCardValidation() + newLine;
+        str += "  ICC: " + args.getICCGroupId() + newLine;
+        str += "  PAN: " + args.getPAN() + newLine;
+        str += "  Issuer ID: " + args.getIssuerId() + newLine;
+        str += "  Country Code: " + args.getCountryCode() + newLine;
+        str += "  Card Restrictions: " + args.getCardRestrictions() + newLine;
+        str += "  Card Fee: " + args.getCardFee() + newLine;
+        str += "  Track2: " + args.getTrack2() + newLine;
+        str += "  TCC: " + args.getTCC() + newLine;
+        str += "  Bank Agent: " + args.getBankAgent() + newLine;
 
-		handleMessage("CardInfoAll", str, CurrentListener.CARD_INFO_ALL);
-	}
+        handleMessage("CardInfoAll", str, CurrentListener.CARD_INFO_ALL);
+    }
 
-	@Override
-	public void OnCard(CardEventArgs args) {
-		String str = "";
+    @Override
+    public void OnCard(CardEventArgs args) {
+        String str = "";
 
-		str += "  Issuer ID: " + args.getIssuerID() + newLine;
-		str += "  Card Status: " + args.getCardStatus() + "(" + args.getCardStatus().getValue() + ")" + newLine;
+        str += "  Issuer ID: " + args.getIssuerID() + newLine;
+        str += "  Card Status: " + args.getCardStatus() + "(" + args.getCardStatus().getValue() + ")" + newLine;
 
-		handleMessage("Card", str, CurrentListener.CARD);
-	}
+        handleMessage("Card", str, CurrentListener.CARD);
+    }
 }
