@@ -1,6 +1,8 @@
 package baxi;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.os.Bundle;
 import android.os.Message;
@@ -23,6 +25,7 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PluginResult;
 import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONArray;
 
 enum CurrentListener {
 	DISPLAY,
@@ -45,54 +48,92 @@ enum CurrentListener {
 //Normally BaxiCtrlEventListener will be used unless the BaxiEF is used in the ECR for additional functionality
 public class BaxiEventListener implements BaxiEFEventListener {
     protected final String newLine = System.getProperty("line.separator");
-		public CallbackContext openCallback;
-		public CallbackContext purchaseCallback;
+    public CallbackContext openCallback;
+    public CallbackContext purchaseCallback;
+    public List<String> printTextMessages = new ArrayList<String>();
+    public List<String> displayTextMessages = new ArrayList<String>();
 
     protected void handleMessage(String messageName, String message, CurrentListener listener){
-      android.util.Log.i("debug", "=====================handleMessage "+ messageName+ "============================>");
-      android.util.Log.i("debug", message);
-      android.util.Log.i("debug", "================== end handleMessage "+ messageName+ "============================>");
+        android.util.Log.i("debug", "=====================handleMessage "+ messageName+ "============================>");
+        android.util.Log.i("debug", message);
+        android.util.Log.i("debug", "================== end handleMessage "+ messageName+ "============================>");
     }
 
-	@Override
-	public void OnStdRspReceived(StdRspReceivedEventArgs args) {
+    @Override
+    public void OnStdRspReceived(StdRspReceivedEventArgs args) {
 		handleMessage("StdRspReceived", "", CurrentListener.STD_RSP);
 	}
 
 	@Override
 	public void OnPrintText(PrintTextEventArgs args) {
 		String printText = args.getPrintText();
+		this.printTextMessages.add(printText);
 		handleMessage("PrintText", printText, CurrentListener.PRINT);
 	}
 
 	@Override
 	public void OnDisplayText(DisplayTextEventArgs args) {
 		String displayText = args.getDisplayText();
+        this.displayTextMessages.add(displayText);
 		handleMessage("DisplayText", displayText, CurrentListener.DISPLAY);
 	}
 
+	public JSONObject packJSON(){
+        JSONObject json = new JSONObject();
+
+        try {
+            JSONArray ja = new JSONArray();
+            for (String message : this.printTextMessages) {
+                ja.put(message);
+            }
+            json.put("printTextMessages", ja);
+            this.printTextMessages = new ArrayList<String>();
+
+        } catch (JSONException e) {
+            android.util.Log.i("error", e.getMessage());
+        }
+
+        try {
+            JSONArray ja = new JSONArray();
+            for (String message : this.displayTextMessages) {
+                ja.put(message);
+            }
+            json.put("displayTextMessages", ja);
+            this.displayTextMessages = new ArrayList<String>();
+
+        } catch (JSONException e) {
+            android.util.Log.i("error", e.getMessage());
+        }
+
+        return json;
+    }
+
 	@Override
 	public void OnLocalMode(LocalModeEventArgs args) {
-
 		if (args.getResult() == 1) {
 				this.openCallback.success("Opened");
 		} else if (args.getResult() == 2) {
-				this.purchaseCallback.error("Rejected, code: " + args.getResult());
-		} else if (args.getResult() == 0) {
+                try {
+                    JSONObject json = this.packJSON();
+                    json.put("result", args.getResult());
+                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                } catch (JSONException e) {
+                    //some exception handler code.
+                }
+        } else if (args.getResult() == 0) {
 			if (args.getResponseCode() == "Y") {
-
 				try {
-					JSONObject json = new JSONObject();
-          json.put("cardInfo", args.getTruncatedPan());
-	        this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+					JSONObject json = this.packJSON();
+                    json.put("cardInfo", args.getTruncatedPan());
+        	        this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
 				} catch (JSONException e) {
 					//some exception handler code.
 				}
 			} else {
-				this.purchaseCallback.error("Processing failed + " + args.getResponseCode());
+                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, this.packJSON()));
 			}
 		}
-    handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
+        handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
 	}
 
 	@Override
