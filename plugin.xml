@@ -24,7 +24,7 @@
       <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     </config-file>
 
-    <source-file src="src/android/jbaxi-android-ef_1.0.2.0.jar" target-dir="libs/" />
+    <source-file src="src/android/jbaxi-android-ef-1.2.0.0-20160504.121433-4.jar" target-dir="libs/" />
     <source-file src="src/android/Baxi.java" target-dir="src/cordova-baxi-plugin/Baxi" />
     <source-file src="src/android/BaxiEventListener.java" target-dir="src/cordova-baxi-plugin/Baxi" />
 
