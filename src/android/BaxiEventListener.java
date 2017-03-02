@@ -50,6 +50,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
     protected final String newLine = System.getProperty("line.separator");
     public CallbackContext openCallback;
     public CallbackContext purchaseCallback;
+    public CallbackContext administrationCallback;
     public List<String> printTextMessages = new ArrayList<String>();
     public List<String> displayTextMessages = new ArrayList<String>();
 
@@ -108,32 +109,130 @@ public class BaxiEventListener implements BaxiEFEventListener {
         return json;
     }
 
+    // Signals the application that a financial or administrative transaction is completed
     @Override
     public void OnLocalMode(LocalModeEventArgs args) {
-        if (args.getResult() == 1) {
-            this.openCallback.success("Opened");
-        } else if (args.getResult() == 2) {
-            try {
-                JSONObject json = this.packJSON();
-                json.put("result", args.getResult());
-                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
-            } catch (JSONException e) {
-                //some exception handler code.
-            }
-        } else if (args.getResult() == 0) {
-            if (args.getResponseCode() == "Y") {
-                try {
-                    JSONObject json = this.packJSON();
+
+        handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
+
+        try {
+            // create json object holding all display and print messages, which will be sent back to solution
+            JSONObject json = null;
+            
+            json = this.packJSON();
+
+            // add result codes for logging reasons
+            json.put("responseCode", args.getResponseCode());
+            json.put("result", args.getResult());
+
+            if (args.getResult() == 0) {
+
+                // 0 : Financial transaction OK, accumulator updated
+        
+                // offline transaction ?
+                if (args.getResponseCode() == "Y") {
                     json.put("cardInfo", args.getTruncatedPan());
-                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
-                } catch (JSONException e) {
-                    //some exception handler code.
                 }
-            } else {
-                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, this.packJSON()));
+
+                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+
+            } else if (args.getResult() == 1) {
+
+                // 1 : Administrative transaction OK, no update of accumulator
+
+                if(this.openCallback != null) {
+
+                    this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                }
+
+                // notify administrative callback handler
+                if(this.administrationCallback != null) {
+
+                    this.administrationCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                }
+
+            } else if (args.getResult() == 2) {
+
+                // 2 : Transaction rejected, no update of accumulator
+                String responseCode = args.getResponseCode();
+                int    rejectionSource = args.getRejectionSource();
+                String rejectionReason = args.getRejectionReason();
+
+                String message = "BAXIPLUGIN_";
+
+                // append responseCode to error
+                if(!responseCode.equals("")) {
+                    message += responseCode;
+                } else {
+                    message += rejectionSource + "_" + rejectionReason;
+                }
+
+                /*
+                // transform responsecode to human error codes
+                if(responseCode.equals("Z3")) {
+                    // transaction has been dismissed, due to missing connectivity
+                    message = "No network error. Please force an offline transaction.";
+                } else if(responseCode.equals("Z4")) {
+                    message = "Card declined";
+                } else if(responseCode.equals("07")) {
+                    message = "Card closed";
+                } else if(responseCode.equals("33")) {
+                    message = "Expired card";
+                } else if(responseCode.equals("43")) {
+                    message = "Card blocked";
+                } else if(responseCode.equals("51")) {
+                    message = "Insufficent funds";
+                } else if(responseCode.equals("55")) {
+                    message = "Wrong pin";
+                } else if(responseCode.equals("75")) {
+                    message = "To many pin retries";
+                } else if(responseCode.equals("87")) {
+                    message = "Reconciliation needed";
+                } else {
+
+                    if(rejectionReason.equals("5:0")) {
+                        message = "Timeout";
+                    } else if(rejectionReason.equals("1:0")) {
+                        message = "Terminal busy";
+                    } else if(rejectionReason.equals("2:1")) {
+                        message = "Cancelled by customer";
+                    } else if(rejectionReason.equals("2:2")) {
+                        message = "Cancelled by customer";
+                    } else if(rejectionReason.equals("3:0")) {
+                        message = "Cancelled by operator";
+                    } else if(rejectionReason.equals("3:3")) {
+                        message = "Double transaction";
+                    } else {
+                        message = "Unknown";
+                    }
+                }
+*/
+                json.put("message", message);
+            
+                android.util.Log.i("debug", "json: " + json.toString());
+
+                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+
+            } else if (args.getResult() == 3) {
+                // 3 : Transaction is Loyalty Transaction
+
+            } else if(args.getResult() == 99) {
+                
+                // 99 : Unknown result. Lost communication with terminal. Baxi Android has generated this local mode
+                json.put("alertMessage", "Unknown error. Please reboot your Nets terminal by pressing 'clear' + '-' buttons simultaneously");
+                this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+            }
+        } catch(JSONException jex)
+        {
+            android.util.Log.i("debug", "OnLocalMode JSON exception: " + jex.toString());
+        } catch(Exception ex) {
+
+            android.util.Log.i("debug", "OnLocalMode exception: " + ex.toString());
+
+            if(this.openCallback != null) {
+                this.openCallback.error("Exception: " + ex.toString());
             }
         }
-        handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
     }
 
     @Override
@@ -207,7 +306,11 @@ public class BaxiEventListener implements BaxiEFEventListener {
 
     @Override
     public void OnBaxiError(BaxiErrorEventArgs args) {
+
         handleMessage("Error", args.getErrorCode() + " " + args.getErrorString(), CurrentListener.ERROR);
+
+        // is it an error during opening ?
+
     }
 
     @Override
