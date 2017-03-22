@@ -167,50 +167,8 @@ public class BaxiEventListener implements BaxiEFEventListener {
                     message += rejectionSource + "_" + rejectionReason;
                 }
 
-                /*
-                // transform responsecode to human error codes
-                if(responseCode.equals("Z3")) {
-                    // transaction has been dismissed, due to missing connectivity
-                    message = "No network error. Please force an offline transaction.";
-                } else if(responseCode.equals("Z4")) {
-                    message = "Card declined";
-                } else if(responseCode.equals("07")) {
-                    message = "Card closed";
-                } else if(responseCode.equals("33")) {
-                    message = "Expired card";
-                } else if(responseCode.equals("43")) {
-                    message = "Card blocked";
-                } else if(responseCode.equals("51")) {
-                    message = "Insufficent funds";
-                } else if(responseCode.equals("55")) {
-                    message = "Wrong pin";
-                } else if(responseCode.equals("75")) {
-                    message = "To many pin retries";
-                } else if(responseCode.equals("87")) {
-                    message = "Reconciliation needed";
-                } else {
-
-                    if(rejectionReason.equals("5:0")) {
-                        message = "Timeout";
-                    } else if(rejectionReason.equals("1:0")) {
-                        message = "Terminal busy";
-                    } else if(rejectionReason.equals("2:1")) {
-                        message = "Cancelled by customer";
-                    } else if(rejectionReason.equals("2:2")) {
-                        message = "Cancelled by customer";
-                    } else if(rejectionReason.equals("3:0")) {
-                        message = "Cancelled by operator";
-                    } else if(rejectionReason.equals("3:3")) {
-                        message = "Double transaction";
-                    } else {
-                        message = "Unknown";
-                    }
-                }
-*/
                 json.put("message", message);
             
-                android.util.Log.i("debug", "json: " + json.toString());
-
                 this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
 
             } else if (args.getResult() == 3) {
@@ -219,7 +177,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
             } else if(args.getResult() == 99) {
                 
                 // 99 : Unknown result. Lost communication with terminal. Baxi Android has generated this local mode
-                json.put("alertMessage", "Unknown error. Please reboot your Nets terminal by pressing 'clear' + '-' buttons simultaneously");
+                json.put("alertMessage", "Unknown error.");
                 this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
             }
         } catch(JSONException jex)
