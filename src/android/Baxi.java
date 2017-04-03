@@ -10,6 +10,7 @@ import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CallbackContext;
+import org.apache.cordova.PluginResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,6 +30,7 @@ import eu.nets.baxi.client.AdministrationArgs;
 public class Baxi extends CordovaPlugin {
 
   private BluetoothDevice device;
+  private boolean baxiConnectedToTerminalAndReady = false;
 
 	// This flag controls if ActivityDiscoverBTDevices should be launched or skipped (only 1 terminal paired)
 	private boolean alwaysBTDevices;
@@ -37,7 +39,9 @@ public class Baxi extends CordovaPlugin {
    BaxiEventListener baxiEventListener;
 
    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
-       super.initialize(cordova, webView);
+      super.initialize(cordova, webView);
+
+      this.baxiEventListener = new BaxiEventListener();
    }
 
     @Override
@@ -45,35 +49,47 @@ public class Baxi extends CordovaPlugin {
       android.util.Log.i("baxiPlugin", "=====================execute============================");
       android.util.Log.i("baxiPlugin", "executing: " + action);
 
-        if (action.equals("transferAmount")) {
-            JSONObject params = args.getJSONObject(0);
-            this.transferAmount(params, callbackContext);
-            return true;
-        }
+      if(action.equals("start")) {
+        this.baxiEventListener.displayMessagesCallback = callbackContext;
 
-        if (action.equals("openBaxi")) {
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
+        pluginResult.setKeepCallback(true);
+        this.baxiEventListener.displayMessagesCallback.sendPluginResult(pluginResult);
+
+        android.util.Log.i("baxiPlugin", "Start listener called");
+        return true;
+      }
+
+      if(action.equals("stop")) {
+        this.baxiEventListener.displayMessagesCallback = null;
+        callbackContext.success();
+        return true;
+      }
+
+      if (action.equals("transferAmount")) {
           JSONObject params = args.getJSONObject(0);
-            this.openBaxi(params, callbackContext);
-            return true;
-        }
-
-        if(action.equals("isOpen")) {
-          this.isOpen(callbackContext);
+          this.transferAmount(params, callbackContext);
           return true;
-        }
+      }
 
-        if(action.equals("close")) {
-          this.close(callbackContext);
+      if (action.equals("connect")) {
+        JSONObject params = args.getJSONObject(0);
+          this.connectBaxi(params, callbackContext);
           return true;
-        }
+      }
 
-        if(action.equals("administration")) {
-          JSONObject params = args.getJSONObject(0);
-          this.administration(params, callbackContext);
-          return true;
-        }
+      if(action.equals("isConnected")) {
+        this.isConnected(callbackContext);
+        return true;
+      }
 
-        return false;
+      if(action.equals("administration")) {
+        JSONObject params = args.getJSONObject(0);
+        this.administration(params, callbackContext);
+        return true;
+      }
+
+      return false;
     }
 
     private void administration(JSONObject params, final CallbackContext callbackContext) {
@@ -166,7 +182,18 @@ public class Baxi extends CordovaPlugin {
 
     }
 
+    // used to notify if a valid connection is present to the baxi terminal or not
+    private void isConnected(CallbackContext callbackContext) {
+      
+      if(isBaxiOpen() == true && baxiConnectedToTerminalAndReady == true) {
+        callbackContext.success("Connected");
+      } else {
+        callbackContext.error("Not connected");
+      }
+    }
+
     private boolean isBaxiOpen() {
+
       if(Baxi.BAXI == null) {
         android.util.Log.i("baxiPlugin", "Baxi not initialised -> Returning false");
         return false;
@@ -297,6 +324,7 @@ public class Baxi extends CordovaPlugin {
 
     }
 
+/*
     private void isOpen(CallbackContext callbackContext) {
 
       android.util.Log.i("baxiPlugin", "isOpen called");
@@ -309,16 +337,28 @@ public class Baxi extends CordovaPlugin {
 
     }
 
+
     private void close(CallbackContext callbackContext) {
       Baxi.BAXI.close();
       callbackContext.success("Baxi is closed");
     }
+    */
 
-    private void openBaxi(JSONObject params, CallbackContext callbackContext) {
+    private void connectBaxi(JSONObject params, CallbackContext callbackContext) {
       this.initBaxi();
       this.configBaxi(params);
       this.openBaxiConnection(null, callbackContext);
     }
+
+    protected void initBaxi() {
+  		BAXI = new BaxiCtrl(webView.getContext());
+  		if (BAXI.getCardInfoAll()){
+  			BAXI = new BaxiEF(webView.getContext());
+  			((BaxiEF) BAXI).addBaxiEFListener(baxiEventListener);
+  		} else {
+  			BAXI.addBaxiCtrlEventListener(baxiEventListener);
+  		}
+  	}
 
     private void configBaxi(JSONObject params) {
       try {
@@ -335,24 +375,9 @@ public class Baxi extends CordovaPlugin {
 
     }
 
-    protected void initBaxi() {
-      this.baxiEventListener = new BaxiEventListener();
-  		BAXI = new BaxiCtrl(webView.getContext());
-  		if (BAXI.getCardInfoAll()){
-  			BAXI = new BaxiEF(webView.getContext());
-  			((BaxiEF) BAXI).addBaxiEFListener(baxiEventListener);
-  		} else {
-  			BAXI.addBaxiCtrlEventListener(baxiEventListener);
-  		}
-  	}
+    public void openBaxiConnection(BluetoothDevice bDevice, CallbackContext callbackContext) {
 
-    public void openBaxiConnection(BluetoothDevice bDevice, CallbackContext callbackContext){
       this.baxiEventListener.openCallback = callbackContext;
-
-      if (Baxi.BAXI.isOpen()){
-        callbackContext.success("Baxi is already open");
-        return;
-      }
 
       //Reload the class IF the setting has changed since first creation (see onCreate)
       //BaxiEF is a descendant with additional features
@@ -369,8 +394,11 @@ public class Baxi extends CordovaPlugin {
         alwaysBTDevices = false;
         enableBluetooth(callbackContext);
       } else if(Baxi.BAXI.getSerialDriver().equalsIgnoreCase("ip")){
+        baxiConnectedToTerminalAndReady = false;
         callbackContext.error("'ip' SerialDriver is not supported ");
       } 
+
+      baxiConnectedToTerminalAndReady = true;
     }
 
     private void enableBluetooth(CallbackContext callbackContext){
@@ -379,6 +407,7 @@ public class Baxi extends CordovaPlugin {
       if(bluetoothAdapter != null){
         boolean isEnabled = bluetoothAdapter.isEnabled();
         if (!isEnabled) {
+          baxiConnectedToTerminalAndReady = false;
           callbackContext.error("Bluetooth not enabled");
         }else{
           launchBTDevices(callbackContext);
@@ -386,29 +415,35 @@ public class Baxi extends CordovaPlugin {
       }
     }
 
-    private void launchBTDevices(CallbackContext callbackContext){
+    private void launchBTDevices(CallbackContext callbackContext) {
+
       android.util.Log.i("debug", "launchBTDevices ==>");
+      
       PCLReader reader = new PCLReader(webView.getContext());
-      if (device == null){
+      if (device == null) {
         List<PCLDevice> devices = reader.getPairedReaders();
         if (devices != null) {
           if(devices.size() == 0) {
+            baxiConnectedToTerminalAndReady = false;
             callbackContext.error("No paired Nets terminal found");
             return;
           } else if (devices.size() == 1) {
             //Open this if there is only one paired
             device = devices.get(0).getDevice();
           } else {
+            baxiConnectedToTerminalAndReady = false;
             callbackContext.error("Please disconnect all bluetooth devices except Nets terminal");
             return;
           }
         } else {
+          baxiConnectedToTerminalAndReady = false;
           callbackContext.error("Error getting connected Bluetooth devices");
           return;
         }
       }
 
       if (device == null) {
+        baxiConnectedToTerminalAndReady = false;
         callbackContext.error("No bluetooth device found!");
         return;
       }
@@ -416,11 +451,14 @@ public class Baxi extends CordovaPlugin {
       if(reader.setCurrentReader(device.getAddress())){
         try{
           if (BAXI.open() != 1){
+            baxiConnectedToTerminalAndReady = false;
             callbackContext.error("Failed to open Baxi.");
           }else{
+            baxiConnectedToTerminalAndReady = true;
             // success handled in listener
           }
         }catch(Exception e){
+          baxiConnectedToTerminalAndReady = false;
           callbackContext.error("Exception in open (launchBT): " + e.getMessage());
         }
       }

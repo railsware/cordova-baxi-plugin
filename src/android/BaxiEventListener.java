@@ -51,6 +51,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
     public CallbackContext openCallback;
     public CallbackContext purchaseCallback;
     public CallbackContext administrationCallback;
+    public CallbackContext displayMessagesCallback;
     public List<String> printTextMessages = new ArrayList<String>();
     public List<String> displayTextMessages = new ArrayList<String>();
 
@@ -77,6 +78,17 @@ public class BaxiEventListener implements BaxiEFEventListener {
         String displayText = args.getDisplayText();
         this.displayTextMessages.add(displayText);
         handleMessage("DisplayText", displayText, CurrentListener.DISPLAY);
+
+        // notify listeners
+        if(this.displayMessagesCallback != null) {
+            android.util.Log.i("debug", "Notifying listeners: " + displayText);
+
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, displayText);
+            pluginResult.setKeepCallback(true);
+            this.displayMessagesCallback.sendPluginResult(pluginResult);
+        } else {
+            android.util.Log.i("debug", "Not sending displayMessage as null");
+        }
     }
 
     public JSONObject packJSON(){
@@ -113,7 +125,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
     @Override
     public void OnLocalMode(LocalModeEventArgs args) {
 
-        handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
+        handleMessage("OnLocalmode ===========================> ", getLMText(args), CurrentListener.LM);
 
         try {
             // create json object holding all display and print messages, which will be sent back to solution
@@ -177,8 +189,13 @@ public class BaxiEventListener implements BaxiEFEventListener {
             } else if(args.getResult() == 99) {
                 
                 // 99 : Unknown result. Lost communication with terminal. Baxi Android has generated this local mode
-                json.put("alertMessage", "Unknown error.");
-                this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                android.util.Log.i("debug", "99 -> |" + args.getResultData() + "|");
+                if(args.getResultData().equals("D)0")) {
+                    android.util.Log.i("debug", "Skipping onLocalMode for terminal reboot, to make better connect experience for user");
+                } else {
+                    json.put("alertMessage", "Unknown error.");
+                    this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                }
             }
         } catch(JSONException jex)
         {
