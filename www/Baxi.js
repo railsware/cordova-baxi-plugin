@@ -5,6 +5,10 @@ exports.connect = function(arg0, success, error) {
   exec(success, error, "Baxi", "connect", [arg0]);
 };
 
+exports.disconnect = function(arg0, success, error) {
+  exec(success, error, "Baxi", "disconnect", [arg0]);
+};
+
 // return true if the terminal is connected and ready
 exports.isConnected = function(success, error) {
   exec(success, error, "Baxi", "isConnected", []);
@@ -24,6 +28,7 @@ var Listener = function() {
 
   this.channels = {
     displayevent:cordova.addWindowEventHandler("displayevent"),
+    errorEvent:cordova.addWindowEventHandler("errorevent"),
   };
 
   // hook onto subscribe / unsubscribe events for channel
@@ -40,19 +45,27 @@ Listener.onHasSubscribersChange = function () {
   console.log("Listener.onHasSubscribersChange called ...");
 
   if(listener.channels.displayevent.numHandlers === 1) {
-    exec(listener._displayEvent, listener._error, "Baxi", "start", []);
-    console.log("Added");
+    exec(listener._displayEvent, listener._error, "Baxi", "startDisplay", []);
   } else if (listener.channels.displayevent.numHandlers === 0) {
-    exec(null, null, "Baxi", "stop", []);
-    console.log("Removed");
+    exec(null, null, "Baxi", "stopDisplay", []);
+  } else if(listener.channels.errorevent.numHandlers === 0 ) {
+    exec(listener._errorEvent, listener._error, "Baxi", "startError");
+  } else if(listener.channels.errorevent.numHandlers === 0 ) {
+    exec(null, null, "Baxi", "stopError", []);
   } else {
-    console.log("numhandlers : " + listener.channels.displayevent.numHandlers);
+    console.log("displayevent.numhandlers : " + listener.channels.displayevent.numHandlers);
+    console.log("errorevent.numhandlers : " + listener.channels.errorevent.numHandlers);
   }
 };
 
 Listener.prototype._displayEvent = function(info) {
   console.log("_displayEvent called : " + info);
   cordova.fireWindowEvent("displayevent", { "displayText": info });
+};
+
+Listener.prototype._errorEvent = function(error) {
+  console.log("_errorEvent called : " + error);
+  cordova.fireWindowEvent("errorevent", { "errorText": error });
 };
 
 Listener.prototype._error = function(e) {

@@ -52,6 +52,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
     public CallbackContext purchaseCallback;
     public CallbackContext administrationCallback;
     public CallbackContext displayMessagesCallback;
+    public CallbackContext errorCallback;
     public List<String> printTextMessages = new ArrayList<String>();
     public List<String> displayTextMessages = new ArrayList<String>();
 
@@ -190,11 +191,18 @@ public class BaxiEventListener implements BaxiEFEventListener {
                 
                 // 99 : Unknown result. Lost communication with terminal. Baxi Android has generated this local mode
                 android.util.Log.i("debug", "99 -> |" + args.getResultData() + "|");
-                if(args.getResultData().equals("D)0")) {
-                    android.util.Log.i("debug", "Skipping onLocalMode for terminal reboot, to make better connect experience for user");
-                } else {
+                if(this.openCallback != null) {
+                    // HACK !
+                    if(args.getResultData().equals("D)0")) {
+                        android.util.Log.i("debug", "Skipping onLocalMode for terminal reboot, to make better connect experience for user");
+                    } else {
+                        json.put("alertMessage", "Unknown error.");
+                        this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                    }
+                }
+                if(this.purchaseCallback != null) {
                     json.put("alertMessage", "Unknown error.");
-                    this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
                 }
             }
         } catch(JSONException jex)
@@ -286,6 +294,16 @@ public class BaxiEventListener implements BaxiEFEventListener {
 
         // is it an error during opening ?
 
+        // notify listeners
+        if(this.errorCallback != null) {
+            android.util.Log.i("debug", "Notifying error listeners: " + args.getErrorString());
+
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, args.getErrorString());
+            pluginResult.setKeepCallback(true);
+            this.errorCallback.sendPluginResult(pluginResult);
+        } else {
+            android.util.Log.i("debug", "Not sending error message as errorCallback is null");
+        }
     }
 
     @Override
