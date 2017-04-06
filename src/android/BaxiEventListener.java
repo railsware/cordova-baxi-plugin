@@ -50,6 +50,9 @@ public class BaxiEventListener implements BaxiEFEventListener {
     protected final String newLine = System.getProperty("line.separator");
     public CallbackContext openCallback;
     public CallbackContext purchaseCallback;
+    public CallbackContext administrationCallback;
+    public CallbackContext displayMessagesCallback;
+    public CallbackContext errorCallback;
     public List<String> printTextMessages = new ArrayList<String>();
     public List<String> displayTextMessages = new ArrayList<String>();
 
@@ -76,6 +79,17 @@ public class BaxiEventListener implements BaxiEFEventListener {
         String displayText = args.getDisplayText();
         this.displayTextMessages.add(displayText);
         handleMessage("DisplayText", displayText, CurrentListener.DISPLAY);
+
+        // notify listeners
+        if(this.displayMessagesCallback != null) {
+            android.util.Log.i("debug", "Notifying listeners: " + displayText);
+
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, displayText);
+            pluginResult.setKeepCallback(true);
+            this.displayMessagesCallback.sendPluginResult(pluginResult);
+        } else {
+            android.util.Log.i("debug", "Not sending displayMessage as null");
+        }
     }
 
     public JSONObject packJSON(){
@@ -108,32 +122,100 @@ public class BaxiEventListener implements BaxiEFEventListener {
         return json;
     }
 
+    // Signals the application that a financial or administrative transaction is completed
     @Override
     public void OnLocalMode(LocalModeEventArgs args) {
-        if (args.getResult() == 1) {
-            this.openCallback.success("Opened");
-        } else if (args.getResult() == 2) {
-            try {
-                JSONObject json = this.packJSON();
-                json.put("result", args.getResult());
-                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
-            } catch (JSONException e) {
-                //some exception handler code.
-            }
-        } else if (args.getResult() == 0) {
-            if (args.getResponseCode() == "Y") {
-                try {
-                    JSONObject json = this.packJSON();
+
+        handleMessage("OnLocalmode ===========================> ", getLMText(args), CurrentListener.LM);
+
+        try {
+            // create json object holding all display and print messages, which will be sent back to solution
+            JSONObject json = null;
+            
+            json = this.packJSON();
+
+            // add result codes for logging reasons
+            json.put("responseCode", args.getResponseCode());
+            json.put("result", args.getResult());
+
+            if (args.getResult() == 0) {
+
+                // 0 : Financial transaction OK, accumulator updated
+        
+                // offline transaction ?
+                if (args.getResponseCode() == "Y") {
                     json.put("cardInfo", args.getTruncatedPan());
-                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
-                } catch (JSONException e) {
-                    //some exception handler code.
                 }
-            } else {
-                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, this.packJSON()));
+
+                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+
+            } else if (args.getResult() == 1) {
+
+                // 1 : Administrative transaction OK, no update of accumulator
+
+                if(this.openCallback != null) {
+
+                    this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                }
+
+                // notify administrative callback handler
+                if(this.administrationCallback != null) {
+
+                    this.administrationCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                }
+
+            } else if (args.getResult() == 2) {
+
+                // 2 : Transaction rejected, no update of accumulator
+                String responseCode = args.getResponseCode();
+                int    rejectionSource = args.getRejectionSource();
+                String rejectionReason = args.getRejectionReason();
+
+                String message = "BAXIPLUGIN_";
+
+                // append responseCode to error
+                if(!responseCode.equals("")) {
+                    message += responseCode;
+                } else {
+                    message += rejectionSource + "_" + rejectionReason;
+                }
+
+                json.put("message", message);
+            
+                this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+
+            } else if (args.getResult() == 3) {
+                // 3 : Transaction is Loyalty Transaction
+
+            } else if(args.getResult() == 99) {
+                
+                // 99 : Unknown result. Lost communication with terminal. Baxi Android has generated this local mode
+                android.util.Log.i("debug", "99 -> |" + args.getResultData() + "|");
+                if(this.openCallback != null) {
+                    // HACK !
+                    if(args.getResultData().equals("D)0")) {
+                        android.util.Log.i("debug", "Skipping onLocalMode for terminal reboot, to make better connect experience for user");
+                    } else {
+                        json.put("alertMessage", "Unknown error.");
+                        this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                    }
+                }
+                if(this.purchaseCallback != null) {
+                    json.put("alertMessage", "Unknown error.");
+                    this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                }
+            }
+        } catch(JSONException jex)
+        {
+            android.util.Log.i("debug", "OnLocalMode JSON exception: " + jex.toString());
+        } catch(Exception ex) {
+
+            android.util.Log.i("debug", "OnLocalMode exception: " + ex.toString());
+
+            if(this.openCallback != null) {
+                this.openCallback.error("Exception: " + ex.toString());
             }
         }
-        handleMessage("Localmode ===========================> ", getLMText(args), CurrentListener.LM);
     }
 
     @Override
@@ -207,7 +289,21 @@ public class BaxiEventListener implements BaxiEFEventListener {
 
     @Override
     public void OnBaxiError(BaxiErrorEventArgs args) {
+
         handleMessage("Error", args.getErrorCode() + " " + args.getErrorString(), CurrentListener.ERROR);
+
+        // is it an error during opening ?
+
+        // notify listeners
+        if(this.errorCallback != null) {
+            android.util.Log.i("debug", "Notifying error listeners: " + args.getErrorString());
+
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, args.getErrorString());
+            pluginResult.setKeepCallback(true);
+            this.errorCallback.sendPluginResult(pluginResult);
+        } else {
+            android.util.Log.i("debug", "Not sending error message as errorCallback is null");
+        }
     }
 
     @Override
