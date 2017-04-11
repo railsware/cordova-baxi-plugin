@@ -55,8 +55,6 @@ public class Baxi extends CordovaPlugin {
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         this.baxiEventListener.displayMessagesCallback.sendPluginResult(pluginResult);
-
-        android.util.Log.i("baxiPlugin", "Start display listener called");
         return true;
       }
 
@@ -72,8 +70,6 @@ public class Baxi extends CordovaPlugin {
         PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
         pluginResult.setKeepCallback(true);
         this.baxiEventListener.errorCallback.sendPluginResult(pluginResult);
-
-        android.util.Log.i("baxiPlugin", "Start error listener called");
         return true;
       }
 
@@ -102,6 +98,11 @@ public class Baxi extends CordovaPlugin {
 
       if(action.equals("isConnected")) {
         this.isConnected(callbackContext);
+        return true;
+      }
+
+      if(action.equals("isReady")) {
+        this.isReady(callbackContext);
         return true;
       }
 
@@ -150,7 +151,9 @@ public class Baxi extends CordovaPlugin {
       args.OperID = operID;
       args.OptionalData = optionalData;
 
-      if(operation.equalsIgnoreCase("Reconciliation")) {
+      if(operation.equalsIgnoreCase("OpenHack")) {
+          args.AdmCode = 0x3030; // documented unused value from SDK docs!
+      } else if(operation.equalsIgnoreCase("Reconciliation")) {
           args.AdmCode = 0x3130;
       } else if(operation.equalsIgnoreCase("CLEAR")) {
           args.AdmCode = 0x3131;
@@ -204,12 +207,32 @@ public class Baxi extends CordovaPlugin {
 
     }
 
+    // 'hack' used to check if communication really is open and working, as isOpen from SDK fails on this feature
+    private void isReady(CallbackContext callbackContext) {
+
+      android.util.Log.i("debug", "---> isReady() : " + isBaxiOpen());
+      if(isBaxiOpen() == true ) {
+
+        // low level communication is open ... now lets try to do a admin hack, to find out if it REALLY is open and working
+        try {
+          JSONObject params = new JSONObject();
+          params.put("operation", "OpenHack");
+          this.administration(params, callbackContext);
+        } catch(JSONException jex) {
+          callbackContext.error("JSON exception: " + jex);          
+        }
+      } else {
+        callbackContext.error("Not connected");
+      }
+      
+    }
+
     // used to notify if a valid connection is present to the baxi terminal or not
     private void isConnected(CallbackContext callbackContext) {
       
       android.util.Log.i("debug", "---> isBaxiOpen() : " + isBaxiOpen());
       if(isBaxiOpen() == true ) {//&& baxiConnectedToTerminalAndReady == true) {
-        callbackContext.success("Connected");
+        callbackContext.success("Open");
       } else {
         callbackContext.error("Not connected");
       }

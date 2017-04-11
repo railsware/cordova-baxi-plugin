@@ -196,13 +196,20 @@ public class BaxiEventListener implements BaxiEFEventListener {
                     if(args.getResultData().equals("D)0")) {
                         android.util.Log.i("debug", "Skipping onLocalMode for terminal reboot, to make better connect experience for user");
                     } else {
+                        android.util.Log.i("debug", "openCallback 99");
                         json.put("alertMessage", "Unknown error.");
                         this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
                     }
                 }
                 if(this.purchaseCallback != null) {
+                    android.util.Log.i("debug", "purchaseCallback 99");
                     json.put("alertMessage", "Unknown error.");
                     this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                }
+                if(this.administrationCallback != null) {
+                    android.util.Log.i("debug", "administrationCallback 99");
+                    json.put("alertMessage", "Unknown error.");
+                    this.administrationCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
                 }
             }
         } catch(JSONException jex)
