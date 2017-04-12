@@ -13,7 +13,12 @@ exports.disconnect = function(arg0, success, error) {
 exports.isConnected = function(success, error) {
   exec(success, error, "Baxi", "isConnected", []);
 };
- 
+
+// hack used to check if connection IS open and VALID
+exports.isReady = function(success, error) {
+  exec(success, error, "Baxi", "isReady", []);
+};
+
 // Transfer amount via connected baxi
 exports.transferAmount = function(arg0, success, error) {
     exec(success, error, "Baxi", "transferAmount", [arg0]);
@@ -27,44 +32,34 @@ exports.administration = function(arg0, success, error) {
 var Listener = function() {
 
   this.channels = {
-    displayevent:cordova.addWindowEventHandler("displayevent"),
+    displayEvent:cordova.addWindowEventHandler("displayevent"),
     errorEvent:cordova.addWindowEventHandler("errorevent"),
   };
 
   // hook onto subscribe / unsubscribe events for channel
   for (var key in this.channels) {
     this.channels[key].onHasSubscribersChange = Listener.onHasSubscribersChange;
-    console.log("Added handler for key: " + key);
   }
-
-  console.log("Listener object created with success!");
 };
 
 Listener.onHasSubscribersChange = function () {
 
-  console.log("Listener.onHasSubscribersChange called ...");
-
-  if(listener.channels.displayevent.numHandlers === 1) {
+  if(listener.channels.displayEvent.numHandlers === 1) {
     exec(listener._displayEvent, listener._error, "Baxi", "startDisplay", []);
-  } else if (listener.channels.displayevent.numHandlers === 0) {
+  } else if (listener.channels.displayEvent.numHandlers === 0) {
     exec(null, null, "Baxi", "stopDisplay", []);
-  } else if(listener.channels.errorevent.numHandlers === 0 ) {
+  } else if(listener.channels.errorEvent.numHandlers === 1 ) {
     exec(listener._errorEvent, listener._error, "Baxi", "startError");
-  } else if(listener.channels.errorevent.numHandlers === 0 ) {
+  } else if(listener.channels.errorEvent.numHandlers === 0 ) {
     exec(null, null, "Baxi", "stopError", []);
-  } else {
-    console.log("displayevent.numhandlers : " + listener.channels.displayevent.numHandlers);
-    console.log("errorevent.numhandlers : " + listener.channels.errorevent.numHandlers);
   }
 };
 
 Listener.prototype._displayEvent = function(info) {
-  console.log("_displayEvent called : " + info);
   cordova.fireWindowEvent("displayevent", { "displayText": info });
 };
 
 Listener.prototype._errorEvent = function(error) {
-  console.log("_errorEvent called : " + error);
   cordova.fireWindowEvent("errorevent", { "errorText": error });
 };
 

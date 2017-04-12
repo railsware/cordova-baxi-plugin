@@ -127,7 +127,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
     public void OnLocalMode(LocalModeEventArgs args) {
 
         handleMessage("OnLocalmode ===========================> ", getLMText(args), CurrentListener.LM);
-
+        
         try {
             // create json object holding all display and print messages, which will be sent back to solution
             JSONObject json = null;
@@ -148,6 +148,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
                 }
 
                 this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                this.purchaseCallback = null;
 
             } else if (args.getResult() == 1) {
 
@@ -156,12 +157,14 @@ public class BaxiEventListener implements BaxiEFEventListener {
                 if(this.openCallback != null) {
 
                     this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                    this.openCallback = null;
                 }
 
                 // notify administrative callback handler
                 if(this.administrationCallback != null) {
 
                     this.administrationCallback.sendPluginResult(new PluginResult(PluginResult.Status.OK, json));
+                    this.administrationCallback = null;
                 }
 
             } else if (args.getResult() == 2) {
@@ -196,13 +199,23 @@ public class BaxiEventListener implements BaxiEFEventListener {
                     if(args.getResultData().equals("D)0")) {
                         android.util.Log.i("debug", "Skipping onLocalMode for terminal reboot, to make better connect experience for user");
                     } else {
+                        android.util.Log.i("debug", "openCallback 99");
                         json.put("alertMessage", "Unknown error.");
                         this.openCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                        this.openCallback = null;
                     }
                 }
                 if(this.purchaseCallback != null) {
+                    android.util.Log.i("debug", "purchaseCallback 99");
                     json.put("alertMessage", "Unknown error.");
                     this.purchaseCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                    this.purchaseCallback = null;
+                }
+                if(this.administrationCallback != null) {
+                    android.util.Log.i("debug", "administrationCallback 99");
+                    json.put("alertMessage", "Unknown error.");
+                    this.administrationCallback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, json));
+                    this.administrationCallback = null;
                 }
             }
         } catch(JSONException jex)
@@ -214,6 +227,7 @@ public class BaxiEventListener implements BaxiEFEventListener {
 
             if(this.openCallback != null) {
                 this.openCallback.error("Exception: " + ex.toString());
+                this.openCallback = null;
             }
         }
     }
@@ -296,8 +310,6 @@ public class BaxiEventListener implements BaxiEFEventListener {
 
         // notify listeners
         if(this.errorCallback != null) {
-            android.util.Log.i("debug", "Notifying error listeners: " + args.getErrorString());
-
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, args.getErrorString());
             pluginResult.setKeepCallback(true);
             this.errorCallback.sendPluginResult(pluginResult);
