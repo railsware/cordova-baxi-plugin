@@ -32,7 +32,7 @@ exports.administration = function(arg0, success, error) {
 var Listener = function() {
 
   this.channels = {
-    displayevent:cordova.addWindowEventHandler("displayevent"),
+    displayEvent:cordova.addWindowEventHandler("displayevent"),
     errorEvent:cordova.addWindowEventHandler("errorevent"),
   };
 
@@ -44,13 +44,13 @@ var Listener = function() {
 
 Listener.onHasSubscribersChange = function () {
 
-  if(listener.channels.displayevent.numHandlers === 1) {
+  if(listener.channels.displayEvent.numHandlers === 1) {
     exec(listener._displayEvent, listener._error, "Baxi", "startDisplay", []);
-  } else if (listener.channels.displayevent.numHandlers === 0) {
+  } else if (listener.channels.displayEvent.numHandlers === 0) {
     exec(null, null, "Baxi", "stopDisplay", []);
-  } else if(listener.channels.errorevent.numHandlers === 0 ) {
+  } else if(listener.channels.errorEvent.numHandlers === 1 ) {
     exec(listener._errorEvent, listener._error, "Baxi", "startError");
-  } else if(listener.channels.errorevent.numHandlers === 0 ) {
+  } else if(listener.channels.errorEvent.numHandlers === 0 ) {
     exec(null, null, "Baxi", "stopError", []);
   }
 };
