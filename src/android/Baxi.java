@@ -428,6 +428,7 @@ public class Baxi extends CordovaPlugin {
     public void openBaxiConnection(BluetoothDevice bDevice, CallbackContext callbackContext) {
 
       this.baxiEventListener.openCallback = callbackContext;
+      
       //Reload the class IF the setting has changed since first creation (see onCreate)
       //BaxiEF is a descendant with additional features
       if (BAXI.getCardInfoAll() && !(BAXI instanceof BaxiEF)){
